@@ -13,7 +13,7 @@ dependencies = [
     "pgvector>=0.3,<1.0",
     "pydantic>=2.0,<3.0",
     "pydantic-settings>=2.0,<3.0",
-    "structlog>=24.0",
+    "structlog>=24.0,<27.0",
     "sentence-transformers>=3.0,<4.0",
 ]
 
@@ -44,7 +44,7 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-plugins = ["pydantic.mypy"]
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
 module = ["pgvector.*", "sentence_transformers.*"]
@@ -57,7 +57,3 @@ markers = [
     "integration: marks tests requiring database (deselect with '-m \"not integration\"')",
 ]
 
-[tool.isort]
-profile = "black"
-src_paths = ["src", "tests"]
-line_length = 99

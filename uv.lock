@@ -1402,7 +1402,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4,<1.0" },
     { name = "sentence-transformers", specifier = ">=3.0,<4.0" },
     { name = "sqlalchemy", specifier = ">=2.0,<3.0" },
-    { name = "structlog", specifier = ">=24.0" },
+    { name = "structlog", specifier = ">=24.0,<27.0" },
 ]
 provides-extras = ["dev"]
 
