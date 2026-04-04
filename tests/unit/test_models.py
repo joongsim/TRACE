@@ -1,6 +1,3 @@
-import uuid
-from datetime import date, datetime
-
 from trace_app.storage.models import Base, DeadLetter, Edge, Rule
 
 
