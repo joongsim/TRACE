@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     database_url: str
     log_level: str = "INFO"
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_model: str = "bge-small-en-v1.5"
     embedding_dimension: int = 384
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}

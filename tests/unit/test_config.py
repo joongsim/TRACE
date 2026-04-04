@@ -13,5 +13,5 @@ def test_settings_default_values(monkeypatch: object) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/trace")  # type: ignore[attr-defined]
     settings = Settings()  # type: ignore[call-arg]
     assert settings.log_level == "INFO"
-    assert settings.embedding_model == "all-MiniLM-L6-v2"
+    assert settings.embedding_model == "bge-small-en-v1.5"
     assert settings.embedding_dimension == 384
