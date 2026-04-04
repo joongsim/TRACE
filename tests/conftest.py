@@ -6,6 +6,7 @@ from contextlib import suppress
 
 import pytest
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.exc import CompileError
 from sqlalchemy.orm import Session, sessionmaker
 
 from trace_app.storage.models import Base
@@ -13,9 +14,13 @@ from trace_app.storage.models import Base
 
 @pytest.fixture
 def sqlite_engine() -> Engine:
-    """In-memory SQLite engine for unit tests."""
+    """In-memory SQLite engine for unit tests.
+
+    Tables with Postgres-specific column types (Vector, ARRAY) are skipped —
+    use pg_session for tests that require those models.
+    """
     engine = create_engine("sqlite:///:memory:")
-    with suppress(Exception):
+    with suppress(CompileError):
         Base.metadata.create_all(engine)
     return engine
 
