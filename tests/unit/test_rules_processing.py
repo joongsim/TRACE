@@ -125,3 +125,9 @@ def test_parse_fr_document_no_cfr_references():
 def test_parse_fr_document_sets_ingested_at():
     rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
     assert rule.ingested_at is not None
+
+
+def test_parse_fr_document_normalizes_proposed_rule():
+    doc = {**SAMPLE_DOC, "type": "Proposed Rule"}
+    rule = parse_fr_document(doc, SAMPLE_FULL_TEXT)
+    assert rule.document_type == "PROPOSED_RULE"

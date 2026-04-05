@@ -37,7 +37,10 @@ def ingest_ferc(
         for doc in client.iter_documents(start_date, end_date):
             doc_number = doc.get("document_number", "unknown")
             try:
-                full_text = client.fetch_full_text(doc["body_html_url"])
+                body_html_url = doc.get("body_html_url")
+                if not body_html_url:
+                    raise ValueError(f"No body_html_url for document {doc_number}")
+                full_text = client.fetch_full_text(body_html_url)
                 rule = parse_fr_document(doc, full_text)
                 if save_rule(session, rule):
                     inserted += 1

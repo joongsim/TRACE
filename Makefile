@@ -7,12 +7,12 @@ down:
 	docker compose down
 
 test:
-	uv run pytest --cov=trace_app --cov-report=term-missing
+	uv run pytest --cov=trace_app --cov-report=term-missing --cov-fail-under=60
 
 lint:
 	uv run ruff check src/ tests/
 	uv run ruff format --check src/ tests/
-	uv run mypy check src/
+	uv run mypy src/
 
 fmt:
 	uv run ruff check --fix src/ tests/

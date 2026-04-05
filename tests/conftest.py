@@ -86,6 +86,10 @@ def pg_engine() -> Engine:
         conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.commit()
     Base.metadata.create_all(engine)
+    with engine.connect() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(sa.text(f"TRUNCATE TABLE {table.name} CASCADE"))
+        conn.commit()
     return engine
 
 

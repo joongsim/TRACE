@@ -58,7 +58,7 @@ class FederalRegisterClient:
         page = 1
         while True:
             data = self.fetch_documents_page(start_date, end_date, page, per_page)
-            yield from data["results"]
-            if page >= data["total_pages"]:
+            yield from data.get("results", [])
+            if page >= data.get("total_pages", page):
                 break
             page += 1
