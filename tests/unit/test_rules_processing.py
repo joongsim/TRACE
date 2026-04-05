@@ -1,7 +1,8 @@
 import hashlib
 from datetime import date
 
-from trace_app.processing.rules import compute_content_hash, get_administration
+from trace_app.processing.rules import compute_content_hash, get_administration, parse_fr_document
+from trace_app.storage.models import Rule
 
 
 def test_obama_era():
@@ -56,3 +57,71 @@ def test_content_hash_differs_on_different_doc_number():
     h1 = compute_content_hash("2021-11111", "same text")
     h2 = compute_content_hash("2021-22222", "same text")
     assert h1 != h2
+
+
+SAMPLE_DOC = {
+    "document_number": "2021-11111",
+    "title": "Electric Transmission Incentives Policy",
+    "abstract": "FERC proposes new transmission incentive policy.",
+    "html_url": "https://www.federalregister.gov/documents/2021/06/01/2021-11111/test",
+    "body_html_url": "https://www.federalregister.gov/documents/2021/06/01/2021-11111/test/body.html",
+    "publication_date": "2021-06-01",
+    "effective_on": "2021-07-01",
+    "type": "Rule",
+    "agencies": [{"name": "Federal Energy Regulatory Commission", "id": 172}],
+    "cfr_references": [{"title": 18, "part": 35}, {"title": 18, "part": 36}],
+}
+SAMPLE_FULL_TEXT = "This is the full text of the rule."
+
+
+def test_parse_fr_document_returns_rule():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    assert isinstance(rule, Rule)
+
+
+def test_parse_fr_document_maps_fields():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    assert rule.title == "Electric Transmission Incentives Policy"
+    assert rule.abstract == "FERC proposes new transmission incentive policy."
+    assert rule.full_text == SAMPLE_FULL_TEXT
+    assert rule.publication_date == date(2021, 6, 1)
+    assert rule.effective_date == date(2021, 7, 1)
+    assert rule.agency == "FERC"
+    assert rule.document_type == "RULE"
+    assert rule.fr_url == SAMPLE_DOC["html_url"]
+    assert rule.fr_document_number == "2021-11111"
+
+
+def test_parse_fr_document_maps_administration():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    assert rule.administration == "Biden"
+
+
+def test_parse_fr_document_maps_cfr_sections():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    assert rule.cfr_sections is not None
+    assert "18 C.F.R. § 35" in rule.cfr_sections
+    assert "18 C.F.R. § 36" in rule.cfr_sections
+
+
+def test_parse_fr_document_sets_content_hash():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    expected = compute_content_hash("2021-11111", SAMPLE_FULL_TEXT)
+    assert rule.content_hash == expected
+
+
+def test_parse_fr_document_no_effective_date():
+    doc = {**SAMPLE_DOC, "effective_on": None}
+    rule = parse_fr_document(doc, SAMPLE_FULL_TEXT)
+    assert rule.effective_date is None
+
+
+def test_parse_fr_document_no_cfr_references():
+    doc = {**SAMPLE_DOC, "cfr_references": []}
+    rule = parse_fr_document(doc, SAMPLE_FULL_TEXT)
+    assert rule.cfr_sections is None
+
+
+def test_parse_fr_document_sets_ingested_at():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    assert rule.ingested_at is not None

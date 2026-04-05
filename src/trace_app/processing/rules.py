@@ -1,7 +1,7 @@
 """Parsing and processing logic for Federal Register documents."""
 
 import hashlib
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from trace_app.storage.models import Rule
 
@@ -52,5 +52,5 @@ def parse_fr_document(doc: dict, full_text: str) -> Rule:
         fr_url=doc["html_url"],
         fr_document_number=doc_number,
         content_hash=compute_content_hash(doc_number, full_text),
-        ingested_at=datetime.utcnow(),
+        ingested_at=datetime.now(UTC),
     )
