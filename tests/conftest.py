@@ -5,6 +5,7 @@ from collections.abc import Generator
 from contextlib import suppress
 
 import pytest
+import sqlalchemy as sa
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import CompileError
 from sqlalchemy.orm import Session, sessionmaker
@@ -79,8 +80,11 @@ def sqlite_session(
 @pytest.fixture
 def pg_engine() -> Engine:
     """Postgres engine for integration tests. Requires running database."""
-    url = os.environ.get("DATABASE_URL", "postgresql+psycopg://trace:trace@localhost:5432/trace")
+    url = os.environ.get("DATABASE_URL", "postgresql+psycopg://trace:trace@localhost:5433/trace")
     engine = create_engine(url)
+    with engine.connect() as conn:
+        conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
+        conn.commit()
     Base.metadata.create_all(engine)
     return engine
 
