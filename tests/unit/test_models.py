@@ -19,6 +19,7 @@ def test_rule_model_has_expected_columns() -> None:
         "embedding",
         "ingested_at",
         "content_hash",
+        "fr_document_number",
     }
     assert expected == columns
 
@@ -63,3 +64,19 @@ def test_base_is_declarative_base() -> None:
     from sqlalchemy.orm import DeclarativeBase
 
     assert issubclass(Base, DeclarativeBase)
+
+
+def test_rule_has_fr_document_number():
+    from datetime import date
+
+    rule = Rule(
+        title="Test",
+        full_text="body",
+        publication_date=date(2021, 6, 1),
+        agency="FERC",
+        document_type="RULE",
+        administration="Biden",
+        fr_url="https://www.federalregister.gov/documents/2021/06/01/2021-11111/test",
+        fr_document_number="2021-11111",
+    )
+    assert rule.fr_document_number == "2021-11111"
