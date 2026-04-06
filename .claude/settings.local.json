@@ -35,7 +35,8 @@
       "Bash(.venv/Scripts/python -m ty check src/)",
       "Bash(.venv/Scripts/pytest:*)",
       "mcp__plugin_github_github__list_issues",
-      "Bash(.venv/Scripts/python.exe:*)"
+      "Bash(.venv/Scripts/python.exe:*)",
+      "mcp__plugin_github_github__get_me"
     ]
   }
 }

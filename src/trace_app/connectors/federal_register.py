@@ -32,6 +32,13 @@ DOE = AgencyConfig(
     name="DOE",
 )
 
+DOL = AgencyConfig(
+    agency="labor-department",
+    doc_types=["RULE", "PRORULE", "NOTICE", "PRESDOCU"],
+    topics=[],
+    name="DOL",
+)
+
 
 class FederalRegisterClient:
     def __init__(self, base_url: str = FR_API_BASE):
@@ -81,7 +88,11 @@ class FederalRegisterClient:
         return soup.get_text(separator="\n", strip=True)
 
     def iter_pages(
-        self, config: AgencyConfig, start_date: date, end_date: date, per_page: int = 100
+        self,
+        config: AgencyConfig,
+        start_date: date,
+        end_date: date,
+        per_page: int = 100,
     ):
         """Yield each API page's results as a list of document dicts."""
         page = 1
@@ -93,7 +104,11 @@ class FederalRegisterClient:
             page += 1
 
     def iter_documents(
-        self, config: AgencyConfig, start_date: date, end_date: date, per_page: int = 100
+        self,
+        config: AgencyConfig,
+        start_date: date,
+        end_date: date,
+        per_page: int = 100,
     ):
         """Yield all document dicts for the given date range, paginating automatically."""
         for page in self.iter_pages(config, start_date, end_date, per_page):
