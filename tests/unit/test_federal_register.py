@@ -114,3 +114,22 @@ def test_iter_documents_handles_zero_results():
         docs = list(client.iter_documents(date(2021, 1, 1), date(2021, 12, 31)))
 
     assert docs == []
+
+
+def test_iter_pages_yields_per_page_list():
+    page1 = {"count": 2, "total_pages": 2, "results": [{"document_number": "2021-00001"}]}
+    page2 = {"count": 2, "total_pages": 2, "results": [{"document_number": "2021-00002"}]}
+
+    responses = [MagicMock(), MagicMock()]
+    responses[0].json.return_value = page1
+    responses[0].raise_for_status.return_value = None
+    responses[1].json.return_value = page2
+    responses[1].raise_for_status.return_value = None
+
+    with patch("httpx.get", side_effect=responses):
+        client = FederalRegisterClient()
+        pages = list(client.iter_pages(date(2021, 1, 1), date(2021, 12, 31)))
+
+    assert len(pages) == 2
+    assert pages[0] == [{"document_number": "2021-00001"}]
+    assert pages[1] == [{"document_number": "2021-00002"}]

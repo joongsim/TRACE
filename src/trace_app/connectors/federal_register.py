@@ -53,12 +53,17 @@ class FederalRegisterClient:
         soup = BeautifulSoup(response.text, "lxml")
         return soup.get_text(separator="\n", strip=True)
 
-    def iter_documents(self, start_date: date, end_date: date, per_page: int = 100):
-        """Yield all document dicts for the given date range, paginating automatically."""
+    def iter_pages(self, start_date: date, end_date: date, per_page: int = 100):
+        """Yield each API page's results as a list of document dicts."""
         page = 1
         while True:
             data = self.fetch_documents_page(start_date, end_date, page, per_page)
-            yield from data.get("results", [])
+            yield data.get("results", [])
             if page >= data.get("total_pages", page):
                 break
             page += 1
+
+    def iter_documents(self, start_date: date, end_date: date, per_page: int = 100):
+        """Yield all document dicts for the given date range, paginating automatically."""
+        for page in self.iter_pages(start_date, end_date, per_page):
+            yield from page
