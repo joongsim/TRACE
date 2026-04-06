@@ -1,5 +1,6 @@
 """Federal Register API client."""
 
+import asyncio
 from datetime import date
 
 import httpx
@@ -67,3 +68,50 @@ class FederalRegisterClient:
         """Yield all document dicts for the given date range, paginating automatically."""
         for page in self.iter_pages(start_date, end_date, per_page):
             yield from page
+
+
+_RETRY_DELAYS = [1, 2]
+
+
+async def _fetch_one(
+    client: httpx.AsyncClient,
+    semaphore: asyncio.Semaphore,
+    doc_number: str,
+    url: str,
+) -> tuple[str, str | BaseException]:
+    async with semaphore:
+        for attempt in range(3):
+            try:
+                response = await client.get(url, timeout=60)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "lxml")
+                return doc_number, soup.get_text(separator="\n", strip=True)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 429 and attempt < 2:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                return doc_number, exc
+            except Exception as exc:
+                return doc_number, exc
+    return doc_number, RuntimeError("max retries exceeded")  # unreachable
+
+
+async def fetch_full_texts_concurrent(
+    docs: list[dict],
+    concurrency: int = 10,
+) -> dict[str, str | BaseException]:
+    """Fetch full text for a batch of documents concurrently with 429 retry."""
+    semaphore = asyncio.Semaphore(concurrency)
+    async with httpx.AsyncClient() as client:
+        pairs = await asyncio.gather(
+            *[
+                _fetch_one(
+                    client,
+                    semaphore,
+                    doc.get("document_number", "unknown"),
+                    doc.get("body_html_url", ""),
+                )
+                for doc in docs
+            ]
+        )
+    return dict(pairs)

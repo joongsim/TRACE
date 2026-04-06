@@ -1,9 +1,15 @@
 """Unit tests for the Federal Register API client (httpx calls are mocked)."""
 
+import asyncio
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from trace_app.connectors.federal_register import FederalRegisterClient
+import httpx
+
+from trace_app.connectors.federal_register import (
+    FederalRegisterClient,
+    fetch_full_texts_concurrent,
+)
 
 SAMPLE_PAGE_RESPONSE = {
     "count": 2,
@@ -133,3 +139,72 @@ def test_iter_pages_yields_per_page_list():
     assert len(pages) == 2
     assert pages[0] == [{"document_number": "2021-00001"}]
     assert pages[1] == [{"document_number": "2021-00002"}]
+
+
+def test_fetch_full_texts_concurrent_returns_texts():
+    docs = [
+        {"document_number": "2021-11111", "body_html_url": "https://example.com/1.html"},
+        {"document_number": "2021-22222", "body_html_url": "https://example.com/2.html"},
+    ]
+    html = "<html><body><p>Rule text.</p></body></html>"
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_response.raise_for_status = MagicMock()
+
+    with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = asyncio.run(fetch_full_texts_concurrent(docs))
+
+    assert isinstance(result["2021-11111"], str)
+    assert "Rule text." in result["2021-11111"]
+    assert isinstance(result["2021-22222"], str)
+
+
+def test_fetch_full_texts_concurrent_retries_on_429():
+    docs = [{"document_number": "2021-11111", "body_html_url": "https://example.com/1.html"}]
+    html = "<html><body><p>Rule text.</p></body></html>"
+
+    response_429 = MagicMock()
+    response_429.status_code = 429
+    response_429.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "429", request=MagicMock(), response=response_429
+    )
+
+    response_200 = MagicMock()
+    response_200.status_code = 200
+    response_200.text = html
+    response_200.raise_for_status = MagicMock()
+
+    with (
+        patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls,
+        patch("trace_app.connectors.federal_register.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=[response_429, response_200])
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = asyncio.run(fetch_full_texts_concurrent(docs))
+
+    assert isinstance(result["2021-11111"], str)
+    assert "Rule text." in result["2021-11111"]
+
+
+def test_fetch_full_texts_concurrent_returns_exception_on_failure():
+    docs = [{"document_number": "2021-11111", "body_html_url": "https://example.com/1.html"}]
+
+    with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=httpx.ConnectError("Connection failed"))
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = asyncio.run(fetch_full_texts_concurrent(docs))
+
+    assert isinstance(result["2021-11111"], BaseException)
