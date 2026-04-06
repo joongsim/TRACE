@@ -31,7 +31,7 @@ def ingest_ferc(
     client = FederalRegisterClient()
 
     inserted = 0
-    skipped = 0
+    updated = 0
     failed = 0
 
     session = session_factory()
@@ -42,9 +42,10 @@ def ingest_ferc(
                 doc_number = doc.get("document_number", "unknown")
                 print(
                     f"processing {doc_number} "
-                    f"(inserted={inserted} skipped={skipped} failed={failed})"
+                    f"(inserted={inserted} updated={updated} failed={failed})"
                 )
                 full_text = results.get(doc_number)
+                # full_text = client.fetch_full_text(doc.get("html_url", ""))
                 if isinstance(full_text, BaseException):
                     print(f"  failed {doc_number}: {full_text}")
                     save_dead_letter(
@@ -63,7 +64,8 @@ def ingest_ferc(
                             inserted += 1
                             print(f"  inserted {doc_number}")
                         else:
-                            skipped += 1
+                            updated += 1
+                            print(f"  updated {doc_number}")
                         session.commit()
                     except Exception as exc:
                         print(f"  failed {doc_number}: {exc}")
@@ -78,7 +80,7 @@ def ingest_ferc(
     finally:
         session.close()
 
-    print(f"ingest complete: inserted={inserted} skipped={skipped} failed={failed}")
+    print(f"ingest complete: inserted={inserted} updated={updated} failed={failed}")
 
 
 if __name__ == "__main__":

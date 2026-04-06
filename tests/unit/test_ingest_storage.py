@@ -29,12 +29,25 @@ def test_save_rule_returns_true_on_insert(sqlite_session):
     assert result is True
 
 
-def test_save_rule_returns_false_on_duplicate_hash(sqlite_session):
-    rule1 = _make_rule(content_hash="unique-hash-xyz")
-    rule2 = _make_rule(content_hash="unique-hash-xyz", fr_document_number="2021-22222")
+def test_save_rule_returns_false_on_upsert(sqlite_session):
+    rule1 = _make_rule(full_text="original text", content_hash="hash-v1")
+    rule2 = _make_rule(full_text="updated text", content_hash="hash-v2")
     save_rule(sqlite_session, rule1)
     result = save_rule(sqlite_session, rule2)
     assert result is False
+
+
+def test_save_rule_upsert_updates_full_text(sqlite_session):
+    save_rule(sqlite_session, _make_rule(full_text="original text", content_hash="hash-v1"))
+    save_rule(sqlite_session, _make_rule(full_text="updated text", content_hash="hash-v2"))
+    from sqlalchemy import select
+
+    from trace_app.storage.models import Rule
+
+    rows = sqlite_session.execute(select(Rule)).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].full_text == "updated text"
+    assert rows[0].content_hash == "hash-v2"
 
 
 def test_save_dead_letter_persists(sqlite_session):

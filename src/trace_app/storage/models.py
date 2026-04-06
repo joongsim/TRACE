@@ -30,7 +30,7 @@ class Rule(Base):
     embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
     ingested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     content_hash: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
-    fr_document_number: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    fr_document_number: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
 
 
 class Edge(Base):

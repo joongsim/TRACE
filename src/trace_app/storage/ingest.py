@@ -2,22 +2,29 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from trace_app.storage.models import DeadLetter, Rule
 
 
 def save_rule(session: Session, rule: Rule) -> bool:
-    """Persist a Rule, skipping duplicates by content_hash. Returns True if inserted."""
-    try:
-        session.begin_nested()
+    """Upsert a Rule by fr_document_number. Returns True if inserted, False if updated."""
+    existing = session.execute(
+        select(Rule).where(Rule.fr_document_number == rule.fr_document_number)
+    ).scalar_one_or_none()
+
+    if existing is None:
         session.add(rule)
         session.flush()
         return True
-    except IntegrityError:
-        session.rollback()
-        return False
+
+    existing.full_text = rule.full_text
+    existing.content_hash = rule.content_hash
+    existing.abstract = rule.abstract
+    existing.ingested_at = rule.ingested_at
+    session.flush()
+    return False
 
 
 def save_dead_letter(
