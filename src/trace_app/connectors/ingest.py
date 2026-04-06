@@ -8,7 +8,6 @@ from prefect import flow
 
 from trace_app.config import Settings
 from trace_app.connectors.federal_register import (
-    DOE,
     FERC,
     AgencyConfig,
     FederalRegisterClient,
@@ -88,8 +87,13 @@ def ingest_fr(
 
 if __name__ == "__main__":
     import argparse
+    import inspect
 
-    _PRESETS = {"FERC": FERC, "DOE": DOE}
+    import trace_app.connectors.federal_register as _fr
+
+    _PRESETS = {
+        name: obj for name, obj in inspect.getmembers(_fr) if isinstance(obj, AgencyConfig)
+    }
     parser = argparse.ArgumentParser()
     parser.add_argument("--agency", choices=_PRESETS, default="FERC")
     args = parser.parse_args()
