@@ -21,7 +21,9 @@ fmt:
 migrate:
 	uv run alembic upgrade head
 
+AGENCY ?= FERC
+
 ingest:
-	uv run python -m trace_app.connectors.ferc
+	uv run python -m trace_app.connectors.ingest --agency $(AGENCY)
 
 check: lint test
