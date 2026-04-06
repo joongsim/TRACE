@@ -34,7 +34,8 @@
       "Bash(.venv/Scripts/python -m ruff check src/ tests/)",
       "Bash(.venv/Scripts/python -m ty check src/)",
       "Bash(.venv/Scripts/pytest:*)",
-      "mcp__plugin_github_github__list_issues"
+      "mcp__plugin_github_github__list_issues",
+      "Bash(.venv/Scripts/python.exe:*)"
     ]
   }
 }
