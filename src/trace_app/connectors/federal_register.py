@@ -7,8 +7,9 @@ import httpx
 from bs4 import BeautifulSoup
 
 FR_API_BASE = "https://www.federalregister.gov/api/v1"
-FERC_AGENCY = "federal-energy-regulatory-commission-ferc"
-FERC_DOC_TYPES = ["RULE", "PROPOSED_RULE", "NOTICE"]
+DOE_AGENCY = "energy-department"
+DOE_DOC_TYPES = ["RULE"]
+DOE_TOPICS = ["energy-conservation"]
 
 
 class FederalRegisterClient:
@@ -22,11 +23,12 @@ class FederalRegisterClient:
         page: int = 1,
         per_page: int = 100,
     ) -> dict:
-        """Fetch one page of FERC documents from the FR API."""
+        """Fetch one page of DOE energy-conservation rules from the FR API."""
         params: list[tuple[str, str | int | float | None]] = [
-            ("conditions[agencies][]", FERC_AGENCY),
+            ("conditions[agencies][]", DOE_AGENCY),
             ("per_page", per_page),
             ("page", page),
+            ("order", "newest"),
             ("conditions[publication_date][gte]", start_date.isoformat()),
             ("conditions[publication_date][lte]", end_date.isoformat()),
             ("fields[]", "document_number"),
@@ -40,8 +42,10 @@ class FederalRegisterClient:
             ("fields[]", "agencies"),
             ("fields[]", "cfr_references"),
         ]
-        for doc_type in FERC_DOC_TYPES:
+        for doc_type in DOE_DOC_TYPES:
             params.append(("conditions[type][]", doc_type))
+        for topic in DOE_TOPICS:
+            params.append(("conditions[topics][]", topic))
 
         response = httpx.get(f"{self._base_url}/documents.json", params=params, timeout=30)
         response.raise_for_status()

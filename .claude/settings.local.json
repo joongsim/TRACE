@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv --version)",
+      "Bash(where.exe uv:*)",
+      "Bash(where.exe docker:*)",
+      "Bash(where.exe python:*)",
+      "Bash(uv python:*)",
+      "Bash(gh --version)",
+      "Bash(mkdir -p /c/Users/joong/.claude/projects/C--Projects-trace/memory)",
+      "Bash(mkdir -p /c/Projects/trace/docs/superpowers/plans)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(grep *)",
+      "Bash(mv:*)",
+      "Skill(update-config)",
+      "Bash(cd:*)",
+      "Bash(make:*)",
+      "Bash(docker compose:*)",
+      "mcp__plugin_github_github__issue_write",
+      "Bash(python3 -c \"import time; print\\(hex\\(int\\(time.time\\(\\)\\)\\)[2:]\\)\")",
+      "Bash(python -c \"import time; print\\(hex\\(int\\(time.time\\(\\)\\)\\)[2:]\\)\")",
+      "WebFetch(domain:www.federalregister.gov)",
+      "mcp__plugin_github_github__add_issue_comment",
+      "Bash(docker exec:*)",
+      "mcp__plugin_github_github__issue_read",
+      "Bash(.venv/Scripts/pytest tests/unit/test_federal_register.py::test_iter_pages_yields_per_page_list -v)",
+      "Bash(.venv/Scripts/pytest tests/unit/test_federal_register.py -v)",
+      "Bash(.venv/Scripts/pytest tests/unit/test_federal_register.py::test_fetch_full_texts_concurrent_returns_texts tests/unit/test_federal_register.py::test_fetch_full_texts_concurrent_retries_on_429 tests/unit/test_federal_register.py::test_fetch_full_texts_concurrent_returns_exception_on_failure -v)",
+      "Bash(.venv/Scripts/pre-commit run:*)",
+      "Bash(.venv/Scripts/pytest tests/integration/test_ingest_ferc.py::test_ingest_ferc_concurrent_inserts_rules -v -m integration)",
+      "Bash(.venv/Scripts/pytest tests/ -v -m \"not integration\")",
+      "Bash(.venv/Scripts/pytest tests/ -v -m integration)",
+      "Bash(.venv/Scripts/python -m ruff check src/ tests/)",
+      "Bash(.venv/Scripts/python -m ty check src/)",
+      "Bash(.venv/Scripts/pytest:*)",
+      "mcp__plugin_github_github__list_issues"
+    ]
+  }
+}
