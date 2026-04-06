@@ -1,4 +1,4 @@
-"""Prefect flow for ingesting FERC documents from the Federal Register."""
+"""Prefect flow for ingesting Federal Register documents."""
 
 import asyncio
 import json
@@ -8,6 +8,8 @@ from prefect import flow
 
 from trace_app.config import Settings
 from trace_app.connectors.federal_register import (
+    FERC,
+    AgencyConfig,
     FederalRegisterClient,
     fetch_full_texts_concurrent,
 )
@@ -16,13 +18,14 @@ from trace_app.storage.database import build_engine, build_session_factory
 from trace_app.storage.ingest import save_dead_letter, save_rule
 
 
-@flow(name="ingest_ferc", log_prints=True)
-def ingest_ferc(
+@flow(name="ingest_fr", log_prints=True)
+def ingest_fr(
+    config: AgencyConfig = FERC,
     start_date: date = date(2025, 1, 1),
     end_date: date | None = None,
     concurrency: int = 10,
 ) -> None:
-    """Ingest FERC documents from the Federal Register for the given date range."""
+    """Ingest Federal Register documents for the given agency config and date range."""
     if end_date is None:
         end_date = date.today()
     settings = Settings()  # ty: ignore[missing-argument]
@@ -36,7 +39,7 @@ def ingest_ferc(
 
     session = session_factory()
     try:
-        for page_docs in client.iter_pages(start_date, end_date):
+        for page_docs in client.iter_pages(config, start_date, end_date):
             results = asyncio.run(fetch_full_texts_concurrent(page_docs, concurrency))
             for doc in page_docs:
                 doc_number = doc.get("document_number", "unknown")
@@ -45,7 +48,6 @@ def ingest_ferc(
                     f"(inserted={inserted} updated={updated} failed={failed})"
                 )
                 full_text = results.get(doc_number)
-                # full_text = client.fetch_full_text(doc.get("html_url", ""))
                 if isinstance(full_text, BaseException):
                     print(f"  failed {doc_number}: {full_text}")
                     save_dead_letter(
@@ -84,4 +86,4 @@ def ingest_ferc(
 
 
 if __name__ == "__main__":
-    ingest_ferc()
+    ingest_fr()

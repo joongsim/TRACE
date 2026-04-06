@@ -1,15 +1,36 @@
 """Federal Register API client."""
 
 import asyncio
+from dataclasses import dataclass, field
 from datetime import date
 
 import httpx
 from bs4 import BeautifulSoup
 
 FR_API_BASE = "https://www.federalregister.gov/api/v1"
-DOE_AGENCY = "energy-department"
-DOE_DOC_TYPES = ["RULE"]
-DOE_TOPICS = ["energy-conservation"]
+
+
+@dataclass(frozen=True)
+class AgencyConfig:
+    agency: str
+    doc_types: list[str]
+    name: str
+    topics: list[str] = field(default_factory=list)
+
+
+FERC = AgencyConfig(
+    agency="federal-energy-regulatory-commission",
+    doc_types=["RULE", "PRORULE", "NOTICE", "PRESDOCU"],
+    topics=[],
+    name="FERC",
+)
+
+DOE = AgencyConfig(
+    agency="energy-department",
+    doc_types=["RULE"],
+    topics=["energy-conservation"],
+    name="DOE",
+)
 
 
 class FederalRegisterClient:
@@ -18,14 +39,15 @@ class FederalRegisterClient:
 
     def fetch_documents_page(
         self,
+        config: AgencyConfig,
         start_date: date,
         end_date: date,
         page: int = 1,
         per_page: int = 100,
     ) -> dict:
-        """Fetch one page of DOE energy-conservation rules from the FR API."""
+        """Fetch one page of documents from the FR API for the given agency config."""
         params: list[tuple[str, str | int | float | None]] = [
-            ("conditions[agencies][]", DOE_AGENCY),
+            ("conditions[agencies][]", config.agency),
             ("per_page", per_page),
             ("page", page),
             ("order", "newest"),
@@ -42,9 +64,9 @@ class FederalRegisterClient:
             ("fields[]", "agencies"),
             ("fields[]", "cfr_references"),
         ]
-        for doc_type in DOE_DOC_TYPES:
+        for doc_type in config.doc_types:
             params.append(("conditions[type][]", doc_type))
-        for topic in DOE_TOPICS:
+        for topic in config.topics:
             params.append(("conditions[topics][]", topic))
 
         response = httpx.get(f"{self._base_url}/documents.json", params=params, timeout=30)
@@ -58,19 +80,23 @@ class FederalRegisterClient:
         soup = BeautifulSoup(response.text, "lxml")
         return soup.get_text(separator="\n", strip=True)
 
-    def iter_pages(self, start_date: date, end_date: date, per_page: int = 100):
+    def iter_pages(
+        self, config: AgencyConfig, start_date: date, end_date: date, per_page: int = 100
+    ):
         """Yield each API page's results as a list of document dicts."""
         page = 1
         while True:
-            data = self.fetch_documents_page(start_date, end_date, page, per_page)
+            data = self.fetch_documents_page(config, start_date, end_date, page, per_page)
             yield data.get("results", [])
             if page >= data.get("total_pages", page):
                 break
             page += 1
 
-    def iter_documents(self, start_date: date, end_date: date, per_page: int = 100):
+    def iter_documents(
+        self, config: AgencyConfig, start_date: date, end_date: date, per_page: int = 100
+    ):
         """Yield all document dicts for the given date range, paginating automatically."""
-        for page in self.iter_pages(start_date, end_date, per_page):
+        for page in self.iter_pages(config, start_date, end_date, per_page):
             yield from page
 
 

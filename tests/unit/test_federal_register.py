@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
 from trace_app.connectors.federal_register import (
+    DOE,
+    FERC,
     FederalRegisterClient,
     fetch_full_texts_concurrent,
 )
@@ -43,6 +45,18 @@ SAMPLE_PAGE_RESPONSE = {
 }
 
 
+def test_agency_config_ferc_preset():
+    assert FERC.agency == "federal-energy-regulatory-commission"
+    assert "RULE" in FERC.doc_types
+    assert FERC.name == "FERC"
+
+
+def test_agency_config_doe_preset():
+    assert DOE.agency == "energy-department"
+    assert "RULE" in DOE.doc_types
+    assert DOE.name == "DOE"
+
+
 def test_fetch_documents_page_calls_correct_url():
     mock_response = MagicMock()
     mock_response.json.return_value = SAMPLE_PAGE_RESPONSE
@@ -51,6 +65,7 @@ def test_fetch_documents_page_calls_correct_url():
     with patch("httpx.get", return_value=mock_response) as mock_get:
         client = FederalRegisterClient()
         result = client.fetch_documents_page(
+            FERC,
             start_date=date(2021, 1, 1),
             end_date=date(2021, 12, 31),
             page=1,
@@ -61,6 +76,29 @@ def test_fetch_documents_page_calls_correct_url():
     assert "documents.json" in call_args.args[0]
     assert result["total_pages"] == 1
     assert len(result["results"]) == 2
+
+
+def test_fetch_documents_page_uses_config_agency():
+    mock_response = MagicMock()
+    mock_response.json.return_value = SAMPLE_PAGE_RESPONSE
+    mock_response.raise_for_status.return_value = None
+
+    with patch("httpx.get", return_value=mock_response) as mock_get:
+        client = FederalRegisterClient()
+        client.fetch_documents_page(
+            DOE,
+            start_date=date(2021, 1, 1),
+            end_date=date(2021, 12, 31),
+        )
+
+    call_args = mock_get.call_args
+    params = (
+        call_args.kwargs.get("params") or call_args.args[1]
+        if len(call_args.args) > 1
+        else call_args.kwargs["params"]
+    )
+    param_dict = dict(params) if isinstance(params, dict) else {k: v for k, v in params}
+    assert param_dict.get("conditions[agencies][]") == "energy-department"
 
 
 def test_fetch_full_text_strips_html():
@@ -84,7 +122,7 @@ def test_iter_documents_yields_all_results_single_page():
 
     with patch("httpx.get", return_value=mock_response):
         client = FederalRegisterClient()
-        docs = list(client.iter_documents(date(2021, 1, 1), date(2021, 12, 31)))
+        docs = list(client.iter_documents(FERC, date(2021, 1, 1), date(2021, 12, 31)))
 
     assert len(docs) == 2
     assert docs[0]["document_number"] == "2021-11111"
@@ -102,7 +140,7 @@ def test_iter_documents_paginates():
 
     with patch("httpx.get", side_effect=responses):
         client = FederalRegisterClient()
-        docs = list(client.iter_documents(date(2021, 1, 1), date(2021, 12, 31)))
+        docs = list(client.iter_documents(FERC, date(2021, 1, 1), date(2021, 12, 31)))
 
     assert len(docs) == 2
     assert docs[0]["document_number"] == "2021-00001"
@@ -117,7 +155,7 @@ def test_iter_documents_handles_zero_results():
 
     with patch("httpx.get", return_value=mock_response):
         client = FederalRegisterClient()
-        docs = list(client.iter_documents(date(2021, 1, 1), date(2021, 12, 31)))
+        docs = list(client.iter_documents(FERC, date(2021, 1, 1), date(2021, 12, 31)))
 
     assert docs == []
 
@@ -134,7 +172,7 @@ def test_iter_pages_yields_per_page_list():
 
     with patch("httpx.get", side_effect=responses):
         client = FederalRegisterClient()
-        pages = list(client.iter_pages(date(2021, 1, 1), date(2021, 12, 31)))
+        pages = list(client.iter_pages(FERC, date(2021, 1, 1), date(2021, 12, 31)))
 
     assert len(pages) == 2
     assert pages[0] == [{"document_number": "2021-00001"}]
