@@ -1,7 +1,7 @@
 """Integration tests for the FERC ingestion flow against real Postgres."""
 
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -28,12 +28,12 @@ SAMPLE_DOCS = [
 def test_ingest_ferc_inserts_rules(pg_session):
     with (
         patch(
-            "trace_app.connectors.ferc.FederalRegisterClient.iter_documents",
-            return_value=iter(SAMPLE_DOCS),
+            "trace_app.connectors.ferc.FederalRegisterClient.iter_pages",
+            return_value=iter([SAMPLE_DOCS]),
         ),
         patch(
-            "trace_app.connectors.ferc.FederalRegisterClient.fetch_full_text",
-            return_value="Full text of the rule.",
+            "trace_app.connectors.ferc.fetch_full_texts_concurrent",
+            new=AsyncMock(return_value={"2021-11111": "Full text of the rule."}),
         ),
         patch(
             "trace_app.connectors.ferc.build_engine",
@@ -53,12 +53,12 @@ def test_ingest_ferc_deduplicates(pg_session):
     for _ in range(2):
         with (
             patch(
-                "trace_app.connectors.ferc.FederalRegisterClient.iter_documents",
-                return_value=iter(SAMPLE_DOCS),
+                "trace_app.connectors.ferc.FederalRegisterClient.iter_pages",
+                return_value=iter([SAMPLE_DOCS]),
             ),
             patch(
-                "trace_app.connectors.ferc.FederalRegisterClient.fetch_full_text",
-                return_value="Full text of the rule.",
+                "trace_app.connectors.ferc.fetch_full_texts_concurrent",
+                new=AsyncMock(return_value={"2021-11111": "Full text of the rule."}),
             ),
             patch(
                 "trace_app.connectors.ferc.build_engine",
@@ -75,12 +75,12 @@ def test_ingest_ferc_deduplicates(pg_session):
 def test_ingest_ferc_writes_dead_letter_on_error(pg_session):
     with (
         patch(
-            "trace_app.connectors.ferc.FederalRegisterClient.iter_documents",
-            return_value=iter(SAMPLE_DOCS),
+            "trace_app.connectors.ferc.FederalRegisterClient.iter_pages",
+            return_value=iter([SAMPLE_DOCS]),
         ),
         patch(
-            "trace_app.connectors.ferc.FederalRegisterClient.fetch_full_text",
-            side_effect=Exception("Connection timeout"),
+            "trace_app.connectors.ferc.fetch_full_texts_concurrent",
+            new=AsyncMock(return_value={"2021-11111": Exception("Connection timeout")}),
         ),
         patch(
             "trace_app.connectors.ferc.build_engine",
@@ -94,3 +94,27 @@ def test_ingest_ferc_writes_dead_letter_on_error(pg_session):
     assert len(rules) == 0
     assert len(dead) == 1
     assert "Connection timeout" in dead[0].error_message
+
+
+@pytest.mark.integration
+def test_ingest_ferc_concurrent_inserts_rules(pg_session):
+    with (
+        patch(
+            "trace_app.connectors.ferc.FederalRegisterClient.iter_pages",
+            return_value=iter([SAMPLE_DOCS]),
+        ),
+        patch(
+            "trace_app.connectors.ferc.fetch_full_texts_concurrent",
+            new=AsyncMock(return_value={"2021-11111": "Full text of the rule."}),
+        ),
+        patch(
+            "trace_app.connectors.ferc.build_engine",
+            return_value=pg_session.get_bind(),
+        ),
+    ):
+        ingest_ferc(start_date=date(2021, 1, 1), end_date=date(2021, 12, 31), concurrency=5)
+
+    rules = pg_session.query(Rule).all()
+    assert len(rules) == 1
+    assert rules[0].fr_document_number == "2021-11111"
+    assert rules[0].administration == "Biden"
