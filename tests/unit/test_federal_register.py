@@ -208,3 +208,26 @@ def test_fetch_full_texts_concurrent_returns_exception_on_failure():
         result = asyncio.run(fetch_full_texts_concurrent(docs))
 
     assert isinstance(result["2021-11111"], BaseException)
+
+
+def test_fetch_full_texts_concurrent_exhausts_retries_on_persistent_429():
+    docs = [{"document_number": "2021-11111", "body_html_url": "https://example.com/1.html"}]
+
+    response_429 = MagicMock()
+    response_429.status_code = 429
+    response_429.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "429", request=MagicMock(), response=response_429
+    )
+
+    with (
+        patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls,
+        patch("trace_app.connectors.federal_register.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=response_429)
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = asyncio.run(fetch_full_texts_concurrent(docs))
+
+    assert isinstance(result["2021-11111"], BaseException)

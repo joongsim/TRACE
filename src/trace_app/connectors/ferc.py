@@ -57,7 +57,8 @@ def ingest_ferc(
                     failed += 1
                 else:
                     try:
-                        rule = parse_fr_document(doc, full_text or "")
+                        assert isinstance(full_text, str)
+                        rule = parse_fr_document(doc, full_text)
                         if save_rule(session, rule):
                             inserted += 1
                             print(f"  inserted {doc_number}")
