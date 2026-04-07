@@ -31,6 +31,9 @@ class Rule(Base):
     ingested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     content_hash: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     fr_document_number: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
+    text_source: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="html_fallback", default="html_fallback"
+    )
 
 
 class Edge(Base):
