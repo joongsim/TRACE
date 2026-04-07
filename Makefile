@@ -1,4 +1,4 @@
-.PHONY: up down test lint migrate ingest fmt check
+.PHONY: up down test lint migrate ingest backfill fmt check
 
 up:
 	docker compose up -d
@@ -25,5 +25,8 @@ AGENCY ?= FERC
 
 ingest:
 	uv run python -m trace_app.connectors.ingest --agency $(AGENCY)
+
+backfill:
+	uv run python -m trace_app.connectors.backfill
 
 check: lint test

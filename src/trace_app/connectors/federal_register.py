@@ -108,6 +108,23 @@ class FederalRegisterClient:
         soup = BeautifulSoup(response.text, "lxml")
         return soup.get_text(separator="\n", strip=True), "html_fallback"
 
+    def fetch_documents_by_numbers(self, doc_numbers: list[str]) -> list[dict]:
+        """Fetch pdf_url and body_html_url for a list of document numbers."""
+        if not doc_numbers:
+            return []
+        response = httpx.get(
+            f"{self._base_url}/documents/{','.join(doc_numbers)}.json",
+            params=[
+                ("fields[]", "document_number"),
+                ("fields[]", "html_url"),
+                ("fields[]", "body_html_url"),
+                ("fields[]", "pdf_url"),
+            ],
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json().get("results", [])
+
     def iter_pages(
         self,
         config: AgencyConfig,
