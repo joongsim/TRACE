@@ -65,6 +65,7 @@ class FederalRegisterClient:
             ("fields[]", "abstract"),
             ("fields[]", "html_url"),
             ("fields[]", "body_html_url"),
+            ("fields[]", "pdf_url"),
             ("fields[]", "publication_date"),
             ("fields[]", "effective_on"),
             ("fields[]", "type"),

@@ -78,6 +78,21 @@ def test_fetch_documents_page_calls_correct_url():
     assert len(result["results"]) == 2
 
 
+def test_fetch_documents_page_includes_pdf_url():
+    mock_response = MagicMock()
+    mock_response.json.return_value = SAMPLE_PAGE_RESPONSE
+    mock_response.raise_for_status.return_value = None
+
+    with patch("httpx.get", return_value=mock_response) as mock_get:
+        client = FederalRegisterClient()
+        client.fetch_documents_page(FERC, start_date=date(2021, 1, 1), end_date=date(2021, 12, 31))
+
+    call_args = mock_get.call_args
+    params = call_args.kwargs.get("params") or call_args.args[1]
+    field_values = [v for k, v in params if k == "fields[]"]
+    assert "pdf_url" in field_values
+
+
 def test_fetch_documents_page_uses_config_agency():
     mock_response = MagicMock()
     mock_response.json.return_value = SAMPLE_PAGE_RESPONSE
