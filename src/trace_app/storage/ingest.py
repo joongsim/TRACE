@@ -28,6 +28,25 @@ def save_rule(session: Session, rule: Rule) -> bool:
     return False
 
 
+def update_rule_text(
+    session: Session,
+    fr_document_number: str,
+    full_text: str,
+    text_source: str,
+) -> None:
+    """Update full_text, text_source, and content_hash on an existing rule."""
+    from trace_app.processing.rules import compute_content_hash
+
+    rule = session.execute(
+        select(Rule).where(Rule.fr_document_number == fr_document_number)
+    ).scalar_one()
+    rule.full_text = full_text
+    rule.text_source = text_source
+    rule.content_hash = compute_content_hash(fr_document_number, full_text)
+    rule.ingested_at = datetime.now(UTC)
+    session.flush()
+
+
 def save_dead_letter(
     session: Session,
     source_url: str,
