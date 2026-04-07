@@ -40,34 +40,45 @@ def ingest_fr(
     session = session_factory()
     try:
         for page_docs in client.iter_pages(config, start_date, end_date):
-            results = asyncio.run(fetch_full_texts_concurrent(page_docs, concurrency))
+            results = asyncio.run(
+                fetch_full_texts_concurrent(
+                    page_docs,
+                    concurrency,
+                    docling_url=settings.docling_url,
+                )
+            )
             for doc in page_docs:
                 doc_number = doc.get("document_number", "unknown")
                 print(
                     f"processing {doc_number} "
                     f"(inserted={inserted} updated={updated} failed={failed})"
                 )
-                full_text = results.get(doc_number)
-                if isinstance(full_text, BaseException):
-                    print(f"  failed {doc_number}: {full_text}")
+                result = results.get(doc_number)
+                if not isinstance(result, tuple):
+                    err: BaseException = (
+                        result
+                        if isinstance(result, BaseException)
+                        else RuntimeError(f"no result for {doc_number}")
+                    )
+                    print(f"  failed {doc_number}: {err}")
                     save_dead_letter(
                         session,
                         source_url=doc.get("html_url", ""),
                         raw_payload=json.dumps(doc),
-                        error_message=str(full_text),
+                        error_message=str(err),
                     )
                     session.commit()
                     failed += 1
                 else:
                     try:
-                        assert isinstance(full_text, str)
-                        rule = parse_fr_document(doc, full_text)
+                        full_text, text_source = result
+                        rule = parse_fr_document(doc, full_text, text_source)
                         if save_rule(session, rule):
                             inserted += 1
-                            print(f"  inserted {doc_number}")
+                            print(f"  inserted {doc_number} ({text_source})")
                         else:
                             updated += 1
-                            print(f"  updated {doc_number}")
+                            print(f"  updated {doc_number} ({text_source})")
                         session.commit()
                     except Exception as exc:
                         print(f"  failed {doc_number}: {exc}")

@@ -65,6 +65,7 @@ class FederalRegisterClient:
             ("fields[]", "abstract"),
             ("fields[]", "html_url"),
             ("fields[]", "body_html_url"),
+            ("fields[]", "pdf_url"),
             ("fields[]", "publication_date"),
             ("fields[]", "effective_on"),
             ("fields[]", "type"),
@@ -80,12 +81,32 @@ class FederalRegisterClient:
         response.raise_for_status()
         return response.json()
 
-    def fetch_full_text(self, body_html_url: str) -> str:
-        """Fetch the HTML body of a document and return plain text."""
+    def fetch_full_text(
+        self,
+        body_html_url: str,
+        pdf_url: str = "",
+        docling_url: str | None = None,
+    ) -> tuple[str, str]:
+        """Fetch document text. Tries PDF via docling-serve first, falls back to HTML.
+
+        Returns (text, text_source) where text_source is 'pdf_docling' or 'html_fallback'.
+        """
+        if docling_url and pdf_url:
+            try:
+                response = httpx.post(
+                    f"{docling_url}/v1/convert/source",
+                    json={"http_source": {"url": pdf_url}, "options": {"to_formats": ["md"]}},
+                    timeout=120,
+                )
+                response.raise_for_status()
+                return response.json()["document"]["md_content"], "pdf_docling"
+            except Exception:
+                pass
+
         response = httpx.get(body_html_url, timeout=60)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")
-        return soup.get_text(separator="\n", strip=True)
+        return soup.get_text(separator="\n", strip=True), "html_fallback"
 
     def iter_pages(
         self,
@@ -122,30 +143,49 @@ async def _fetch_one(
     client: httpx.AsyncClient,
     semaphore: asyncio.Semaphore,
     doc_number: str,
-    url: str,
-) -> tuple[str, str | BaseException]:
+    body_html_url: str,
+    pdf_url: str = "",
+    docling_url: str | None = None,
+) -> tuple[str, str | BaseException, str | None]:
     async with semaphore:
+        if docling_url and pdf_url:
+            try:
+                response = await client.post(
+                    f"{docling_url}/v1/convert/source",
+                    json={"http_source": {"url": pdf_url}, "options": {"to_formats": ["md"]}},
+                    timeout=120,
+                )
+                response.raise_for_status()
+                return doc_number, response.json()["document"]["md_content"], "pdf_docling"
+            except Exception:
+                pass  # fall through to HTML fallback
+
         for attempt in range(3):
             try:
-                response = await client.get(url, timeout=60)
+                response = await client.get(body_html_url, timeout=60)
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, "lxml")
-                return doc_number, soup.get_text(separator="\n", strip=True)
+                return doc_number, soup.get_text(separator="\n", strip=True), "html_fallback"
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 429 and attempt < 2:
                     await asyncio.sleep(_RETRY_DELAYS[attempt])
                     continue
-                return doc_number, exc
+                return doc_number, exc, None
             except Exception as exc:
-                return doc_number, exc
-    return doc_number, RuntimeError("max retries exceeded")  # unreachable
+                return doc_number, exc, None
+    return doc_number, RuntimeError("max retries exceeded"), None  # unreachable
 
 
 async def fetch_full_texts_concurrent(
     docs: list[dict],
     concurrency: int = 10,
-) -> dict[str, str | BaseException]:
-    """Fetch full text for a batch of documents concurrently with 429 retry."""
+    docling_url: str | None = None,
+) -> dict[str, tuple[str, str] | BaseException]:
+    """Fetch full text for a batch of documents concurrently with 429 retry.
+
+    Returns a dict mapping doc_number to (text, text_source) on success,
+    or a BaseException on failure.
+    """
     semaphore = asyncio.Semaphore(concurrency)
     async with httpx.AsyncClient() as client:
         pairs = await asyncio.gather(
@@ -155,8 +195,17 @@ async def fetch_full_texts_concurrent(
                     semaphore,
                     doc.get("document_number", "unknown"),
                     doc.get("body_html_url", ""),
+                    pdf_url=doc.get("pdf_url", ""),
+                    docling_url=docling_url,
                 )
                 for doc in docs
             ]
         )
-    return dict(pairs)
+    result: dict[str, tuple[str, str] | BaseException] = {}
+    for doc_number, text_or_exc, source in pairs:
+        if isinstance(text_or_exc, BaseException):
+            result[doc_number] = text_or_exc
+        else:
+            assert source is not None
+            result[doc_number] = (text_or_exc, source)
+    return result

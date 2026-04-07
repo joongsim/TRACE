@@ -18,6 +18,7 @@ def _make_rule(**overrides) -> Rule:
         fr_document_number="2021-11111",
         content_hash="abc123",
         ingested_at=datetime.now(UTC),
+        text_source="html_fallback",
     )
     defaults.update(overrides)
     return Rule(**defaults)
@@ -48,6 +49,16 @@ def test_save_rule_upsert_updates_full_text(sqlite_session):
     assert len(rows) == 1
     assert rows[0].full_text == "updated text"
     assert rows[0].content_hash == "hash-v2"
+
+
+def test_save_rule_upsert_updates_text_source(sqlite_session):
+    save_rule(sqlite_session, _make_rule(text_source="html_fallback", content_hash="hash-v1"))
+    save_rule(sqlite_session, _make_rule(text_source="pdf_docling", content_hash="hash-v2"))
+    from sqlalchemy import select
+
+    rows = sqlite_session.execute(select(Rule)).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].text_source == "pdf_docling"
 
 
 def test_save_dead_letter_persists(sqlite_session):

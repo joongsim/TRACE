@@ -46,7 +46,8 @@ def _create_sqlite_tables(engine: Engine) -> None:
                     embedding TEXT,
                     ingested_at TEXT,
                     content_hash TEXT UNIQUE,
-                    fr_document_number TEXT
+                    fr_document_number TEXT,
+                    text_source TEXT NOT NULL DEFAULT 'html_fallback'
                 )
             """)
             )

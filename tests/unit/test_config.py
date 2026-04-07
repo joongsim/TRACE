@@ -17,3 +17,17 @@ def test_settings_default_values(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_level == "INFO"
     assert settings.embedding_model == "bge-small-en-v1.5"
     assert settings.embedding_dimension == 384
+
+
+def test_settings_docling_url_defaults_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DOCLING_URL", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://trace:trace@localhost/trace")
+    settings = Settings()  # ty: ignore[missing-argument]
+    assert settings.docling_url is None
+
+
+def test_settings_docling_url_loaded_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://trace:trace@localhost/trace")
+    monkeypatch.setenv("DOCLING_URL", "http://docling:5001")
+    settings = Settings()  # ty: ignore[missing-argument]
+    assert settings.docling_url == "http://docling:5001"

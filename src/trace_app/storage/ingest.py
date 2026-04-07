@@ -23,6 +23,7 @@ def save_rule(session: Session, rule: Rule) -> bool:
     existing.content_hash = rule.content_hash
     existing.abstract = rule.abstract
     existing.ingested_at = rule.ingested_at
+    existing.text_source = rule.text_source
     session.flush()
     return False
 

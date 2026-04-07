@@ -34,7 +34,9 @@ def test_ingest_fr_inserts_rules(pg_session):
         ),
         patch(
             "trace_app.connectors.ingest.fetch_full_texts_concurrent",
-            new=AsyncMock(return_value={"2021-11111": "Full text of the rule."}),
+            new=AsyncMock(
+                return_value={"2021-11111": ("Full text of the rule.", "html_fallback")}
+            ),
         ),
         patch(
             "trace_app.connectors.ingest.build_engine",
@@ -59,7 +61,9 @@ def test_ingest_fr_deduplicates(pg_session):
             ),
             patch(
                 "trace_app.connectors.ingest.fetch_full_texts_concurrent",
-                new=AsyncMock(return_value={"2021-11111": "Full text of the rule."}),
+                new=AsyncMock(
+                    return_value={"2021-11111": ("Full text of the rule.", "html_fallback")}
+                ),
             ),
             patch(
                 "trace_app.connectors.ingest.build_engine",
@@ -106,7 +110,9 @@ def test_ingest_fr_concurrent_inserts_rules(pg_session):
         ),
         patch(
             "trace_app.connectors.ingest.fetch_full_texts_concurrent",
-            new=AsyncMock(return_value={"2021-11111": "Full text of the rule."}),
+            new=AsyncMock(
+                return_value={"2021-11111": ("Full text of the rule.", "html_fallback")}
+            ),
         ),
         patch(
             "trace_app.connectors.ingest.build_engine",

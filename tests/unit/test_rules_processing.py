@@ -131,3 +131,13 @@ def test_parse_fr_document_normalizes_proposed_rule():
     doc = {**SAMPLE_DOC, "type": "Proposed Rule"}
     rule = parse_fr_document(doc, SAMPLE_FULL_TEXT)
     assert rule.document_type == "PROPOSED_RULE"
+
+
+def test_parse_fr_document_default_text_source():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT)
+    assert rule.text_source == "html_fallback"
+
+
+def test_parse_fr_document_sets_pdf_docling_source():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT, text_source="pdf_docling")
+    assert rule.text_source == "pdf_docling"
