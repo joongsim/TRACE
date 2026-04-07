@@ -20,6 +20,7 @@ def test_rule_model_has_expected_columns() -> None:
         "ingested_at",
         "content_hash",
         "fr_document_number",
+        "text_source",
     }
     assert expected == columns
 

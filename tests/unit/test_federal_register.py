@@ -124,10 +124,72 @@ def test_fetch_full_text_strips_html():
 
     with patch("httpx.get", return_value=mock_response):
         client = FederalRegisterClient()
-        text = client.fetch_full_text("https://example.com/body.html")
+        text, source = client.fetch_full_text("https://example.com/body.html")
 
     assert "Rule text here." in text
     assert "<p>" not in text
+    assert source == "html_fallback"
+
+
+def test_fetch_full_text_uses_docling_when_configured():
+    docling_response = MagicMock()
+    docling_response.json.return_value = {
+        "document": {"md_content": "# Rule\n\nMarkdown content."}
+    }
+    docling_response.raise_for_status.return_value = None
+
+    with patch("httpx.post", return_value=docling_response):
+        client = FederalRegisterClient()
+        text, source = client.fetch_full_text(
+            body_html_url="https://example.com/body.html",
+            pdf_url="https://example.com/doc.pdf",
+            docling_url="http://localhost:5001",
+        )
+
+    assert source == "pdf_docling"
+    assert "# Rule" in text
+
+
+def test_fetch_full_text_falls_back_to_html_when_docling_fails():
+    html_content = "<html><body><p>Rule text here.</p></body></html>"
+    mock_html = MagicMock()
+    mock_html.text = html_content
+    mock_html.raise_for_status.return_value = None
+
+    with (
+        patch("httpx.post", side_effect=Exception("connection refused")),
+        patch("httpx.get", return_value=mock_html),
+    ):
+        client = FederalRegisterClient()
+        text, source = client.fetch_full_text(
+            body_html_url="https://example.com/body.html",
+            pdf_url="https://example.com/doc.pdf",
+            docling_url="http://localhost:5001",
+        )
+
+    assert source == "html_fallback"
+    assert "Rule text here." in text
+
+
+def test_fetch_full_text_skips_docling_when_url_none():
+    html_content = "<html><body><p>Rule text here.</p></body></html>"
+    mock_html = MagicMock()
+    mock_html.text = html_content
+    mock_html.raise_for_status.return_value = None
+
+    with (
+        patch("httpx.post") as mock_post,
+        patch("httpx.get", return_value=mock_html),
+    ):
+        client = FederalRegisterClient()
+        text, source = client.fetch_full_text(
+            body_html_url="https://example.com/body.html",
+            pdf_url="https://example.com/doc.pdf",
+            docling_url=None,
+        )
+
+    mock_post.assert_not_called()
+    assert source == "html_fallback"
 
 
 def test_iter_documents_yields_all_results_single_page():
@@ -196,8 +258,16 @@ def test_iter_pages_yields_per_page_list():
 
 def test_fetch_full_texts_concurrent_returns_texts():
     docs = [
-        {"document_number": "2021-11111", "body_html_url": "https://example.com/1.html"},
-        {"document_number": "2021-22222", "body_html_url": "https://example.com/2.html"},
+        {
+            "document_number": "2021-11111",
+            "body_html_url": "https://example.com/1.html",
+            "pdf_url": "",
+        },
+        {
+            "document_number": "2021-22222",
+            "body_html_url": "https://example.com/2.html",
+            "pdf_url": "",
+        },
     ]
     html = "<html><body><p>Rule text.</p></body></html>"
 
@@ -214,13 +284,21 @@ def test_fetch_full_texts_concurrent_returns_texts():
 
         result = asyncio.run(fetch_full_texts_concurrent(docs))
 
-    assert isinstance(result["2021-11111"], str)
-    assert "Rule text." in result["2021-11111"]
-    assert isinstance(result["2021-22222"], str)
+    assert isinstance(result["2021-11111"], tuple)
+    text, source = result["2021-11111"]
+    assert "Rule text." in text
+    assert source == "html_fallback"
+    assert isinstance(result["2021-22222"], tuple)
 
 
 def test_fetch_full_texts_concurrent_retries_on_429():
-    docs = [{"document_number": "2021-11111", "body_html_url": "https://example.com/1.html"}]
+    docs = [
+        {
+            "document_number": "2021-11111",
+            "body_html_url": "https://example.com/1.html",
+            "pdf_url": "",
+        }
+    ]
     html = "<html><body><p>Rule text.</p></body></html>"
 
     response_429 = MagicMock()
@@ -245,8 +323,70 @@ def test_fetch_full_texts_concurrent_retries_on_429():
 
         result = asyncio.run(fetch_full_texts_concurrent(docs))
 
-    assert isinstance(result["2021-11111"], str)
-    assert "Rule text." in result["2021-11111"]
+    assert isinstance(result["2021-11111"], tuple)
+    text, source = result["2021-11111"]
+    assert "Rule text." in text
+    assert source == "html_fallback"
+
+
+def test_fetch_full_texts_concurrent_uses_docling_when_configured():
+    docs = [
+        {
+            "document_number": "2021-11111",
+            "body_html_url": "https://example.com/1.html",
+            "pdf_url": "https://example.com/1.pdf",
+        }
+    ]
+    docling_response = MagicMock()
+    docling_response.status_code = 200
+    docling_response.json.return_value = {"document": {"md_content": "# Rule\n\nMarkdown."}}
+    docling_response.raise_for_status = MagicMock()
+
+    with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=docling_response)
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = asyncio.run(
+            fetch_full_texts_concurrent(docs, docling_url="http://localhost:5001")
+        )
+
+    assert isinstance(result["2021-11111"], tuple)
+    text, source = result["2021-11111"]
+    assert source == "pdf_docling"
+    assert "# Rule" in text
+
+
+def test_fetch_full_texts_concurrent_falls_back_on_docling_failure():
+    docs = [
+        {
+            "document_number": "2021-11111",
+            "body_html_url": "https://example.com/1.html",
+            "pdf_url": "https://example.com/1.pdf",
+        }
+    ]
+    html = "<html><body><p>Rule text.</p></body></html>"
+    html_response = MagicMock()
+    html_response.status_code = 200
+    html_response.text = html
+    html_response.raise_for_status = MagicMock()
+
+    with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=Exception("docling unavailable"))
+        mock_client.get = AsyncMock(return_value=html_response)
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = asyncio.run(
+            fetch_full_texts_concurrent(docs, docling_url="http://localhost:5001")
+        )
+
+    assert isinstance(result["2021-11111"], tuple)
+    text, source = result["2021-11111"]
+    assert source == "html_fallback"
+    assert "Rule text." in text
 
 
 def test_fetch_full_texts_concurrent_returns_exception_on_failure():
