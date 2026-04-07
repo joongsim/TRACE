@@ -95,7 +95,10 @@ class FederalRegisterClient:
             try:
                 response = httpx.post(
                     f"{docling_url}/v1/convert/source",
-                    json={"http_source": {"url": pdf_url}, "options": {"to_formats": ["md"]}},
+                    json={
+                        "http_source": {"url": pdf_url},
+                        "options": {"to_formats": ["md"]},
+                    },
                     timeout=120,
                 )
                 response.raise_for_status()
@@ -165,24 +168,39 @@ async def _fetch_one(
     docling_url: str | None = None,
 ) -> tuple[str, str | BaseException, str | None]:
     async with semaphore:
-        if docling_url and pdf_url:
-            try:
-                response = await client.post(
-                    f"{docling_url}/v1/convert/source",
-                    json={"http_source": {"url": pdf_url}, "options": {"to_formats": ["md"]}},
-                    timeout=120,
-                )
-                response.raise_for_status()
-                return doc_number, response.json()["document"]["md_content"], "pdf_docling"
-            except Exception:
-                pass  # fall through to HTML fallback
+        ### SKIP DOCLING FOR NOW SINCE IT'S UNRELIABLE AND SLOW
+        # AND WE WANT TO PRIORITIZE GETTING THE HTML TEXT
+        # if docling_url and pdf_url:
+        #     try:
+        #         response = await client.post(
+        #             f"{docling_url}/v1/convert/source",
+        #             json={
+        #                 "sources": [{"kind": "http", "url": pdf_url}],
+        #                 "options": {"to_formats": ["md"]},
+        #             },
+        #             timeout=120,
+        #         )
+        #         response.raise_for_status()
+        #         return (
+        #             doc_number,
+        #             response.json()["document"]["md_content"],
+        #             "pdf_docling",
+        #         )
+        #     except Exception as exc:
+        #         print(
+        #             f"  docling failed for {doc_number}: {exc!r}, falling back to HTML"
+        #         )
 
         for attempt in range(3):
             try:
                 response = await client.get(body_html_url, timeout=60)
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, "lxml")
-                return doc_number, soup.get_text(separator="\n", strip=True), "html_fallback"
+                return (
+                    doc_number,
+                    soup.get_text(separator="\n", strip=True),
+                    "html_fallback",
+                )
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 429 and attempt < 2:
                     await asyncio.sleep(_RETRY_DELAYS[attempt])

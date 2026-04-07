@@ -51,6 +51,7 @@ def backfill_fr(
 
             try:
                 docs = client.fetch_documents_by_numbers(doc_numbers)
+                print(f"fetched batch {i}–{i + len(batch)} from FR API")
             except Exception as exc:
                 print(f"  failed to fetch batch {i}–{i + len(batch)}: {exc}")
                 failed += len(batch)
