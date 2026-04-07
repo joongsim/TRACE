@@ -18,6 +18,7 @@ def _make_rule(**overrides) -> Rule:
         fr_document_number="2021-11111",
         content_hash="abc123",
         ingested_at=datetime.now(UTC),
+        text_source="html_fallback",
     )
     defaults.update(overrides)
     return Rule(**defaults)
