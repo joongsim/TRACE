@@ -1,10 +1,13 @@
-.PHONY: up down test lint migrate ingest backfill fmt check
+.PHONY: up down docling test lint migrate ingest backfill fmt check
 
 up:
 	docker compose up -d
 
 down:
 	docker compose down
+
+docling:
+	docker run -d --name docling -p 5001:5001 ghcr.io/docling-project/docling-serve-cpu:latest
 
 test:
 	uv run pytest --cov=trace_app --cov-report=term-missing --cov-fail-under=60
