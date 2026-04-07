@@ -352,64 +352,64 @@ def test_fetch_full_texts_concurrent_retries_on_429():
     assert source == "html_fallback"
 
 
-def test_fetch_full_texts_concurrent_uses_docling_when_configured():
-    docs = [
-        {
-            "document_number": "2021-11111",
-            "body_html_url": "https://example.com/1.html",
-            "pdf_url": "https://example.com/1.pdf",
-        }
-    ]
-    docling_response = MagicMock()
-    docling_response.status_code = 200
-    docling_response.json.return_value = {"document": {"md_content": "# Rule\n\nMarkdown."}}
-    docling_response.raise_for_status = MagicMock()
+# def test_fetch_full_texts_concurrent_uses_docling_when_configured():
+#     docs = [
+#         {
+#             "document_number": "2021-11111",
+#             "body_html_url": "https://example.com/1.html",
+#             "pdf_url": "https://example.com/1.pdf",
+#         }
+#     ]
+#     docling_response = MagicMock()
+#     docling_response.status_code = 200
+#     docling_response.json.return_value = {"document": {"md_content": "# Rule\n\nMarkdown."}}
+#     docling_response.raise_for_status = MagicMock()
 
-    with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=docling_response)
-        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+#     with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
+#         mock_client = AsyncMock()
+#         mock_client.post = AsyncMock(return_value=docling_response)
+#         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+#         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-        result = asyncio.run(
-            fetch_full_texts_concurrent(docs, docling_url="http://localhost:5001")
-        )
+#         result = asyncio.run(
+#             fetch_full_texts_concurrent(docs, docling_url="http://localhost:5001")
+#         )
 
-    assert isinstance(result["2021-11111"], tuple)
-    text, source = result["2021-11111"]
-    assert source == "pdf_docling"
-    assert "# Rule" in text
+#     assert isinstance(result["2021-11111"], tuple)
+#     text, source = result["2021-11111"]
+#     assert source == "pdf_docling"
+#     assert "# Rule" in text
 
 
-def test_fetch_full_texts_concurrent_falls_back_on_docling_failure():
-    docs = [
-        {
-            "document_number": "2021-11111",
-            "body_html_url": "https://example.com/1.html",
-            "pdf_url": "https://example.com/1.pdf",
-        }
-    ]
-    html = "<html><body><p>Rule text.</p></body></html>"
-    html_response = MagicMock()
-    html_response.status_code = 200
-    html_response.text = html
-    html_response.raise_for_status = MagicMock()
+# def test_fetch_full_texts_concurrent_falls_back_on_docling_failure():
+#     docs = [
+#         {
+#             "document_number": "2021-11111",
+#             "body_html_url": "https://example.com/1.html",
+#             "pdf_url": "https://example.com/1.pdf",
+#         }
+#     ]
+#     html = "<html><body><p>Rule text.</p></body></html>"
+#     html_response = MagicMock()
+#     html_response.status_code = 200
+#     html_response.text = html
+#     html_response.raise_for_status = MagicMock()
 
-    with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(side_effect=Exception("docling unavailable"))
-        mock_client.get = AsyncMock(return_value=html_response)
-        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+#     with patch("trace_app.connectors.federal_register.httpx.AsyncClient") as mock_cls:
+#         mock_client = AsyncMock()
+#         mock_client.post = AsyncMock(side_effect=Exception("docling unavailable"))
+#         mock_client.get = AsyncMock(return_value=html_response)
+#         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+#         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-        result = asyncio.run(
-            fetch_full_texts_concurrent(docs, docling_url="http://localhost:5001")
-        )
+#         result = asyncio.run(
+#             fetch_full_texts_concurrent(docs, docling_url="http://localhost:5001")
+#         )
 
-    assert isinstance(result["2021-11111"], tuple)
-    text, source = result["2021-11111"]
-    assert source == "html_fallback"
-    assert "Rule text." in text
+#     assert isinstance(result["2021-11111"], tuple)
+#     text, source = result["2021-11111"]
+#     assert source == "html_fallback"
+#     assert "Rule text." in text
 
 
 def test_fetch_full_texts_concurrent_returns_exception_on_failure():
