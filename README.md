@@ -58,13 +58,17 @@ See `docs/adr/` for architecture decision records.
 
 ```
 src/trace_app/
-├── config.py           # Pydantic settings from env vars
-├── connectors/         # Source-specific ingestion (FERC, etc.)
-├── processing/         # Shared processing pipeline
-├── storage/            # DB models, engine, session factory
-├── graph/              # Edge extraction, NetworkX analytics
-├── agent/              # LangGraph query agent
-└── frontend/           # Streamlit UI
+├── config.py              # Pydantic settings from env vars
+├── connectors/
+│   ├── ingest.py          # Prefect flow: Federal Register ingestion
+│   └── embed.py           # Prefect flow: batch embedding (standalone or subflow)
+├── processing/
+│   ├── rules.py           # FR document parsing
+│   └── embeddings.py      # Pure functions: text prep, model load, batch encode
+├── storage/               # DB models, engine, session factory
+├── graph/                 # Edge extraction, NetworkX analytics
+├── agent/                 # LangGraph query agent
+└── frontend/              # Streamlit UI
 ```
 
 ## License

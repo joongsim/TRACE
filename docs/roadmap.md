@@ -28,19 +28,20 @@ Python package, Docker + Postgres 17/pgvector, Alembic, CI, pre-commit, ORM mode
 
 ---
 
-### Phase 2 — Embedding Pipeline
+### Phase 2 — Embedding Pipeline ✅
 **Goal:** Generate and store semantic embeddings for all `Rule` records.
 
 **Scope:**
 - `bge-small-en-v1.5` via sentence-transformers, 384d, runs locally (no API calls)
 - Embed `title + abstract + full_text[:2048]` — truncated to keep inference fast
-- Batch processing: embed rules where `embedding IS NULL`
-- Prefect task: runs after ingestion in the same flow
-- pgvector `ivfflat` index on `rules.embedding` for ANN search
+- Batch processing: embed rules where `embedding IS NULL`; configurable `embedding_batch_size` (default 64)
+- Standalone Prefect flow `embed_rules` — runs after ingestion as a subflow, also runnable independently
+- pgvector `ivfflat` index on `rules.embedding` for ANN search (migration `e370e6cdd283`)
 
 **Key decisions:**
 - Embedding field is nullable so ingestion and embedding are decoupled — connector failures don't block embeddings
-- Index created in a migration after first full ingest (requires `lists` parameter tuned to row count)
+- Index migration queries current row count at apply time: `lists = max(1, count // 1000)`, fallback 100
+- Pure functions in `processing/embeddings.py` (no I/O); Prefect orchestration in `connectors/embed.py`
 
 ---
 
