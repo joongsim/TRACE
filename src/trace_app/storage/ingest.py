@@ -1,8 +1,9 @@
 """Storage helpers for rule ingestion."""
 
+import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from trace_app.storage.models import DeadLetter, Rule
@@ -61,4 +62,15 @@ def save_dead_letter(
         failed_at=datetime.now(UTC),
     )
     session.add(dead)
+    session.flush()
+
+
+def save_embeddings(
+    session: Session,
+    rule_ids: list[uuid.UUID],
+    vectors: list[list[float]],
+) -> None:
+    """Bulk-update embedding on a batch of rules."""
+    for rule_id, vector in zip(rule_ids, vectors, strict=True):
+        session.execute(update(Rule).where(Rule.rule_id == rule_id).values(embedding=vector))
     session.flush()
