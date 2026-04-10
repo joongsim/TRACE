@@ -91,20 +91,20 @@ class FederalRegisterClient:
 
         Returns (text, text_source) where text_source is 'pdf_docling' or 'html_fallback'.
         """
-        if docling_url and pdf_url:
-            try:
-                response = httpx.post(
-                    f"{docling_url}/v1/convert/source",
-                    json={
-                        "http_source": {"url": pdf_url},
-                        "options": {"to_formats": ["md"]},
-                    },
-                    timeout=120,
-                )
-                response.raise_for_status()
-                return response.json()["document"]["md_content"], "pdf_docling"
-            except Exception:
-                pass
+        # if docling_url and pdf_url:
+        #     try:
+        #         response = httpx.post(
+        #             f"{docling_url}/v1/convert/source",
+        #             json={
+        #                 "sources": [{"kind": "http", "url": pdf_url}],
+        #                 "options": {"to_formats": ["md"]},
+        #             },
+        #             timeout=120,
+        #         )
+        #         response.raise_for_status()
+        #         return response.json()["document"]["md_content"], "pdf_docling"
+        #     except Exception as exc:
+        #         print(f"  docling failed for {pdf_url}: {exc!r}, falling back to HTML")
 
         response = httpx.get(body_html_url, timeout=60)
         response.raise_for_status()
