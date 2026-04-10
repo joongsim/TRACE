@@ -75,7 +75,7 @@ def test_embed_rules_flow_embeds_all_null_rows(pg_engine):
             database_url=os.environ.get(
                 "DATABASE_URL", "postgresql+psycopg://trace:trace@localhost:5433/trace"
             ),
-            embedding_model="bge-small-en-v1.5",
+            embedding_model="all-MiniLM-L6-v2",
             embedding_batch_size=64,
         ),
     ):
@@ -103,7 +103,7 @@ def test_ann_query_returns_semantically_relevant_results(pg_engine):
     session_factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
     session = session_factory()
 
-    model = SentenceTransformer("bge-small-en-v1.5")
+    model = SentenceTransformer("all-MiniLM-L6-v2")
 
     r1 = _make_rule(title="FERC electric rate case", abstract="Rate proceedings for electricity.")
     r2 = _make_rule(title="Natural gas pipeline expansion", abstract="New pipeline certificate.")
