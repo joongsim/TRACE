@@ -7,6 +7,7 @@ from datetime import date
 from prefect import flow
 
 from trace_app.config import Settings
+from trace_app.connectors.embed import embed_rules
 from trace_app.connectors.federal_register import (
     FERC,
     AgencyConfig,
@@ -94,6 +95,11 @@ def ingest_fr(
         session.close()
 
     print(f"ingest complete: inserted={inserted} updated={updated} failed={failed}")
+
+    try:
+        embed_rules()
+    except Exception as exc:
+        print(f"embedding failed (ingestion still succeeded): {exc}")
 
 
 if __name__ == "__main__":
