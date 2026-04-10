@@ -31,3 +31,9 @@ def test_settings_docling_url_loaded_from_env(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("DOCLING_URL", "http://docling:5001")
     settings = Settings()  # ty: ignore[missing-argument]
     assert settings.docling_url == "http://docling:5001"
+
+
+def test_settings_embedding_batch_size_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/trace")
+    settings = Settings()  # ty: ignore[missing-argument]
+    assert settings.embedding_batch_size == 64
