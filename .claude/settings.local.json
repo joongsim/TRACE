@@ -41,7 +41,9 @@
       "Skill(codex:setup)",
       "Bash(curl -s http://localhost:5001/openapi.json)",
       "Bash(python -c \"import sys,json; spec=json.load\\(sys.stdin\\); path=spec['paths'].get\\('/v1/convert/source',{}\\); print\\(json.dumps\\(path.get\\('post',{}\\).get\\('requestBody',{}\\), indent=2\\)\\)\")",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(gh run:*)",
+      "mcp__codebase-memory-mcp__get_code_snippet"
     ]
   }
 }
