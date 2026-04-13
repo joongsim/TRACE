@@ -15,7 +15,7 @@ def test_settings_default_values(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/trace")
     settings = Settings()  # ty: ignore[missing-argument]
     assert settings.log_level == "INFO"
-    assert settings.embedding_model == "bge-small-en-v1.5"
+    assert settings.embedding_model == "all-MiniLM-L6-v2"
     assert settings.embedding_dimension == 384
 
 
