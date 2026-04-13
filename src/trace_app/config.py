@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_dimension: int = 384
+    embedding_batch_size: int = 64
     docling_url: str | None = None
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
