@@ -1,6 +1,9 @@
 # Git worktrees
 .worktrees/
 
+# Brainstorm session files
+.superpowers/
+
 # Notebooks
 *.ipynb
 *.ipynb_checkpoints
