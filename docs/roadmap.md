@@ -44,7 +44,7 @@ Python package, Docker + Postgres 17/pgvector, Alembic, CI, pre-commit, ORM mode
 
 ---
 
-### Phase 3 — Citation Graph
+### Phase 4 — Citation Graph
 **Goal:** Populate `edges` by extracting rule-to-rule citations from full text.
 
 **Scope:**
@@ -61,7 +61,7 @@ Python package, Docker + Postgres 17/pgvector, Alembic, CI, pre-commit, ORM mode
 
 ---
 
-### Phase 4 — Streamlit UI
+### Phase 3 — Streamlit UI ✅
 **Goal:** Browser interface for search, rule detail, citation graph, and administration comparison.
 
 **Views:**
