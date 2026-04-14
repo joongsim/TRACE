@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from trace_app.config import Settings
 from trace_app.frontend.comparison import get_admin_comparison
-from trace_app.frontend.search import get_rule, search_rules
+from trace_app.frontend.search import get_rule, search_rules_hybrid
 from trace_app.storage.database import build_engine, build_session_factory
 
 ADMIN_COLORS = {
@@ -89,7 +89,13 @@ if view == "Search":
     if st.button("Search") or query:
         session = _get_session()
         try:
-            results = search_rules(session, query=query, filters=filters)
+            embed_model = _get_embed_model()
+            results = search_rules_hybrid(
+                session,
+                query=query,
+                filters=filters,
+                embed_fn=lambda text: embed_model.encode(text).tolist(),
+            )
         finally:
             session.close()
 
