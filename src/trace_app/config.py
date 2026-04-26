@@ -12,5 +12,6 @@ class Settings(BaseSettings):
     embedding_dimension: int = 384
     embedding_batch_size: int = 64
     docling_url: str | None = None
+    openrouter_api_key: str | None = None
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
