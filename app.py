@@ -2,11 +2,13 @@
 
 import uuid
 
+import openai
 import plotly.graph_objects as go
 import streamlit as st
 from sentence_transformers import SentenceTransformer
 from sqlalchemy.orm import Session
 
+from trace_app.agent.rag import generate_answer
 from trace_app.config import Settings
 from trace_app.frontend.comparison import get_admin_comparison
 from trace_app.frontend.search import get_rule, search_rules_hybrid
@@ -37,6 +39,15 @@ def _get_session_factory():
 def _get_embed_model():
     settings = Settings()  # ty: ignore[missing-argument]
     return SentenceTransformer(settings.embedding_model)
+
+
+@st.cache_resource
+def _get_openrouter_client():
+    settings = Settings()  # ty: ignore[missing-argument]
+    return openai.OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.openrouter_api_key,
+    )
 
 
 def _get_session() -> Session:
@@ -102,7 +113,20 @@ if view == "Search":
         if not results:
             st.info("No results found.")
         else:
-            st.caption(f"{len(results)} results")
+            openrouter_client = _get_openrouter_client()
+            with st.spinner("Generating answer..."):
+                answer = generate_answer(
+                    query=query,
+                    docs=results,
+                    client=openrouter_client,
+                )
+
+            if answer:
+                st.subheader("Answer")
+                st.write(answer)
+                st.divider()
+
+            st.caption(f"{len(results)} sources")
             for r in results:
                 admin_color = ADMIN_COLORS.get(r["administration"], "#6c7086")
                 doc_color = DOC_TYPE_COLORS.get(r["document_type"], "#6c7086")
