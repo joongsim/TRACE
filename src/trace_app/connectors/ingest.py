@@ -73,7 +73,7 @@ def ingest_fr(
                 else:
                     try:
                         full_text, text_source = result
-                        rule = parse_fr_document(doc, full_text, text_source)
+                        rule = parse_fr_document(doc, full_text, text_source, agency=config.name)
                         if save_rule(session, rule):
                             inserted += 1
                             print(f"  inserted {doc_number} ({text_source})")

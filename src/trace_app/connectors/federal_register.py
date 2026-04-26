@@ -27,8 +27,8 @@ FERC = AgencyConfig(
 
 DOE = AgencyConfig(
     agency="energy-department",
-    doc_types=["RULE"],
-    topics=["energy-conservation"],
+    doc_types=["RULE", "PRORULE", "NOTICE", "PRESDOCU"],
+    topics=[],
     name="DOE",
 )
 

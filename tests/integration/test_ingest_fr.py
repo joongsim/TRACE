@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from trace_app.connectors.federal_register import FERC
+from trace_app.connectors.federal_register import DOL, FERC
 from trace_app.connectors.ingest import ingest_fr
 from trace_app.storage.models import DeadLetter, Rule
 
@@ -99,6 +99,31 @@ def test_ingest_fr_writes_dead_letter_on_error(pg_session):
     assert len(rules) == 0
     assert len(dead) == 1
     assert "Connection timeout" in dead[0].error_message
+
+
+@pytest.mark.integration
+def test_ingest_fr_stores_correct_agency_for_dol(pg_session):
+    with (
+        patch(
+            "trace_app.connectors.ingest.FederalRegisterClient.iter_pages",
+            return_value=iter([SAMPLE_DOCS]),
+        ),
+        patch(
+            "trace_app.connectors.ingest.fetch_full_texts_concurrent",
+            new=AsyncMock(
+                return_value={"2021-11111": ("Full text of the rule.", "html_fallback")}
+            ),
+        ),
+        patch(
+            "trace_app.connectors.ingest.build_engine",
+            return_value=pg_session.get_bind(),
+        ),
+    ):
+        ingest_fr(config=DOL, start_date=date(2021, 1, 1), end_date=date(2021, 12, 31))
+
+    rules = pg_session.query(Rule).all()
+    assert len(rules) == 1
+    assert rules[0].agency == "DOL"
 
 
 @pytest.mark.integration
