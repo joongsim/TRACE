@@ -141,3 +141,8 @@ def test_parse_fr_document_default_text_source():
 def test_parse_fr_document_sets_pdf_docling_source():
     rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT, text_source="pdf_docling")
     assert rule.text_source == "pdf_docling"
+
+
+def test_parse_fr_document_respects_agency_param():
+    rule = parse_fr_document(SAMPLE_DOC, SAMPLE_FULL_TEXT, agency="DOL")
+    assert rule.agency == "DOL"

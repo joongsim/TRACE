@@ -29,7 +29,9 @@ def compute_content_hash(fr_document_number: str, full_text: str) -> str:
     return hashlib.sha256((fr_document_number + full_text).encode()).hexdigest()
 
 
-def parse_fr_document(doc: dict, full_text: str, text_source: str = "html_fallback") -> Rule:
+def parse_fr_document(
+    doc: dict, full_text: str, text_source: str = "html_fallback", agency: str = "FERC"
+) -> Rule:
     """Parse a Federal Register API document dict into a Rule ORM instance."""
     pub_date = date.fromisoformat(doc["publication_date"])
     effective_date = date.fromisoformat(doc["effective_on"]) if doc.get("effective_on") else None
@@ -45,7 +47,7 @@ def parse_fr_document(doc: dict, full_text: str, text_source: str = "html_fallba
         full_text=full_text,
         publication_date=pub_date,
         effective_date=effective_date,
-        agency="FERC",
+        agency=agency,
         document_type=doc["type"].upper().replace(" ", "_"),
         cfr_sections=cfr_sections,
         administration=get_administration(pub_date),
